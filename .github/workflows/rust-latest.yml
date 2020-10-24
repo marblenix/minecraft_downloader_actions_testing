@@ -73,21 +73,17 @@ jobs:
       matrix:
         files:
           - artifact: linux
-            file: ./linux/${{ env.BINARY_NAME }}
+            dir: ./linux/
             mimetype: application/octet-stream
-            name: minecraft_downloader_linux
+            name: _linux
           - artifact: macos
-            file: ./macos/${{ env.BINARY_NAME }}
+            dir: ./macos/
             mimetype: application/octet-stream
-            name: minecraft_downloader_macos
+            name: _macos
           - artifact: windows
-            name: minecraft_downloader_windows.exe
-            file: ./windows/${{ env.BINARY_NAME }}.exe
+            name: _windows.exe
+            dir: ./windows/
             mimetype: application/x-msdos-program
-          - artifact: shasums
-            name: shasums
-            file: ./shasums/shasums
-            mimetype: text/plain
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -99,7 +95,7 @@ jobs:
           --silent
           --url https://www.virustotal.com/api/v3/files
           --header "X-ApiKey: ${{ secrets.VIRUSTOTAL_API_KEY }}"
-          --form file=@${{ matrix.files.file }}
+          --form file=@${{ matrix.files.dir }}${{ matrix.files.name }}
           --output /dev/null
       - name: Upload Release Assets
         uses: actions/upload-release-asset@v1
@@ -107,6 +103,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: ${{ matrix.files.file }}
-          asset_name: ${{ matrix.files.name }}
+          asset_path: ${{ matrix.files.dir }}${{ env.BINARY_NAME }}${{ matrix.files.name }}
+          asset_name: ${{ env.BINARY_NAME }}${{ matrix.files.name }}
           asset_content_type: ${{ matrix.files.mimetype }}
+
+  upload_checksum:
+    name: Upload checksum
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: shasums
+          path: shasums
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./shasums/shasums
+          asset_name: shasums
+          asset_content_type: text/plain
